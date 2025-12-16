@@ -39,9 +39,20 @@ if st.button("Predict Tomorrow's AQI 🚀"):
         today_aqi   # PM2.5 lag 24
     ]])
 
-    prediction = model.predict(input_data)[0]
+    raw_prediction = model.predict(input_data)[0]
+
+# Trend-based adjustment (very important)
+if today_aqi > 300:
+    prediction = raw_prediction + 0.15 * (today_aqi - raw_prediction)
+elif today_aqi > 150:
+    prediction = raw_prediction + 0.10 * (today_aqi - raw_prediction)
+else:
+    prediction = raw_prediction
+
 
     st.subheader("📊 Prediction Result")
+    prediction = max(0, min(prediction, 500))
+
 
     # AQI category + color
     if prediction <= 50:
