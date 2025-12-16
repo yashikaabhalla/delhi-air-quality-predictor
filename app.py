@@ -2,100 +2,118 @@ import streamlit as st
 import numpy as np
 import joblib
 
-# -----------------------------
+# ----------------------------------
 # Page Config
-# -----------------------------
+# ----------------------------------
 st.set_page_config(
     page_title="Delhi Air Quality Predictor",
     page_icon="🌫️",
     layout="centered"
 )
 
-# -----------------------------
+# ----------------------------------
 # Load Model
-# -----------------------------
+# ----------------------------------
 model = joblib.load("rf_model.joblib")
 
-# -----------------------------
-# UI Header
-# -----------------------------
+# ----------------------------------
+# Title
+# ----------------------------------
 st.title("🌫️ Delhi Air Quality Predictor")
 st.write(
-    "Enter **today’s AQI (PM2.5)** to predict **tomorrow’s air quality**."
+    "Enter current pollution levels to predict **PM2.5 for tomorrow** and assess air safety."
 )
 
-# -----------------------------
-# User Input
-# -----------------------------
-today_aqi = st.number_input(
-    "Today's AQI (PM2.5)",
-    min_value=0.0,
-    max_value=1000.0,
-    value=100.0,
-    step=1.0
-)
+# ----------------------------------
+# Input Section
+# ----------------------------------
+st.subheader("🧪 Enter Pollution Levels")
 
-st.caption(
-    "We intelligently use historical pollution patterns behind the scenes to make this prediction."
-)
+co = st.number_input("CO", 0.0, 5000.0, 500.0)
+no = st.number_input("NO", 0.0, 500.0, 20.0)
+no2 = st.number_input("NO₂", 0.0, 500.0, 40.0)
+o3 = st.number_input("O₃", 0.0, 500.0, 30.0)
+so2 = st.number_input("SO₂", 0.0, 500.0, 10.0)
+pm10 = st.number_input("PM10", 0.0, 1000.0, 120.0)
+nh3 = st.number_input("NH₃", 0.0, 500.0, 20.0)
 
-# -----------------------------
-# Prediction Logic
-# -----------------------------
-if st.button("Predict Tomorrow's AQI 🚀"):
+st.markdown("**PM2.5 History**")
+pm25_lag1 = st.number_input("PM2.5 (1 hour ago)", 0.0, 1000.0, 100.0)
+pm25_lag24 = st.number_input("PM2.5 (24 hours ago)", 0.0, 1000.0, 100.0)
 
-    # Model expects 9 features (same order as training)
+# ----------------------------------
+# Prediction
+# ----------------------------------
+if st.button("Predict Air Quality 🚀"):
+
     input_data = np.array([[
-        0.5,          # CO (assumed avg)
-        10,           # NO
-        40,           # NO2
-        30,           # O3
-        10,           # SO2
-        120,          # PM10
-        20,           # NH3
-        today_aqi,    # PM2.5 lag 1
-        today_aqi     # PM2.5 lag 24
+        co, no, no2, o3, so2, pm10, nh3, pm25_lag1, pm25_lag24
     ]])
 
-    # 1️⃣ Raw ML prediction
-    raw_prediction = model.predict(input_data)[0]
+    predicted_pm25 = model.predict(input_data)[0]
 
-    # 2️⃣ Hybrid trend correction (VERY IMPORTANT)
-    if today_aqi > 300:
-        prediction = raw_prediction + 0.15 * (today_aqi - raw_prediction)
-    elif today_aqi > 150:
-        prediction = raw_prediction + 0.10 * (today_aqi - raw_prediction)
+    # ----------------------------------
+    # AQI Interpretation
+    # ----------------------------------
+    if predicted_pm25 <= 60:
+        level = "Good"
+        advice = "Air quality is safe. You can enjoy outdoor activities."
+        color = "#1b5e20"
+        bg = "#e8f5e9"
+
+    elif predicted_pm25 <= 120:
+        level = "Moderate"
+        advice = "Air quality is acceptable. Sensitive people should be cautious."
+        color = "#f9a825"
+        bg = "#fffde7"
+
+    elif predicted_pm25 <= 250:
+        level = "Poor"
+        advice = "Air quality is poor. Avoid prolonged outdoor exposure."
+        color = "#ef6c00"
+        bg = "#fff3e0"
+
     else:
-        prediction = raw_prediction
+        level = "Very Poor / Severe"
+        advice = "Air quality is dangerous. Stay indoors and wear a mask if necessary."
+        color = "#b71c1c"
+        bg = "#ffebee"
 
-    # 3️⃣ Safety limits
-    prediction = max(0, min(prediction, 500))
+    # ----------------------------------
+    # Background Change
+    # ----------------------------------
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-color: {bg};
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
-    # -----------------------------
-    # Display Result
-    # -----------------------------
+    # ----------------------------------
+    # Result Display
+    # ----------------------------------
     st.subheader("📊 Prediction Result")
 
-    if prediction <= 50:
-        st.success(f"🟢 AQI: {prediction:.1f} — Good 🌱")
-        st.write("Air quality is safe. Perfect for outdoor activities.")
+    st.markdown(
+        f"""
+        <div style="padding:20px; border-radius:10px; background-color:{color}; color:white;">
+        <h3>Predicted PM2.5: {predicted_pm25:.1f}</h3>
+        <h4>AQI Level: {level}</h4>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
-    elif prediction <= 100:
-        st.info(f"🟡 AQI: {prediction:.1f} — Moderate 🙂")
-        st.write("Acceptable air quality. Sensitive people should be cautious.")
+    st.write(advice)
 
-    elif prediction <= 200:
-        st.warning(f"🟠 AQI: {prediction:.1f} — Poor 😷")
-        st.write("Limit outdoor activities, especially for children and elderly.")
-
-    else:
-        st.error(f"🔴 AQI: {prediction:.1f} — Very Poor / Severe ☠️")
-        st.write("Avoid going outside. Wear a mask if necessary.")
-
-# -----------------------------
+# ----------------------------------
 # Footer
-# -----------------------------
+# ----------------------------------
 st.markdown("---")
 st.caption(
-    "Built using Machine Learning (Random Forest) on Delhi air pollution data."
+    "Built using Random Forest Regression on Delhi air pollution data."
 )
