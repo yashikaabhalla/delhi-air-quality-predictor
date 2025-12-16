@@ -1,10 +1,9 @@
 import streamlit as st
 import numpy as np
-import pickle
+import joblib
 
-# Load trained model
-with open("rf_model.pkl", "rb") as f:
-    model = pickle.load(f)
+model = joblib.load("rf_model.joblib")
+
 
 st.title("Delhi Air Quality Predictor")
 st.write("Predict PM2.5 based on pollution data")
